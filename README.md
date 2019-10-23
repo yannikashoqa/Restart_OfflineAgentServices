@@ -7,11 +7,13 @@ The ability to identify if the Deep security Agent is :
 - Running
 - Listening on port 4118
 - Activated
-- Able to run the sendCommand
+
 Restart the Agent if:
 - Stopped
 - Not listening to port 4118
 - reported as offline by the Deep Security Manager
+
+Activate the Agent if it is not activated 
 
 REQUIREMENTS:
 - Root privileges
@@ -21,4 +23,7 @@ REQUIREMENTS:
     "MANAGER": "app.deepsecurity.trendmicro.com",
     "PORT": "443",
     "APIKEY" : ""
+    "ACTIVATION_URL" : "dsm://agents.deepsecurity.trendmicro.com:443/",
+    "TENANT_ID" : "",
+    "TOKEN" : ""
 }

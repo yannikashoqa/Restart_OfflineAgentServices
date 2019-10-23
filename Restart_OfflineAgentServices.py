@@ -17,10 +17,11 @@ with open("DS-Config.json", "r") as f:
 Manager = Config["MANAGER"]
 Port = Config["PORT"]
 api_secret_key = Config["APIKEY"]
+Activation_URL = Config["ACTIVATION_URL"]
+Tenant_ID = Config["TENANT_ID"]
+Token = Config["TOKEN"]
 
 RetryCount = 0
-
-#api_secret_key = '5BF3CE88-CDD2-69DD-ADA0-AF26F3B00760:8158108C-8951-E46A-8F37-2682356819E4:jLVm5CeySSuPPQrmejjsNe8a347NVRSJOt9zXUmkBjc='
 
 class XmlDictConfig(dict):
     # Refference : https://stackoverflow.com/questions/2148119/how-to-convert-an-xml-string-to-a-dictionary
@@ -126,6 +127,26 @@ def Agent_Activated():
         print ("Agent is Not Activated")
         return False
 
+
+def Activate_Agent():    
+    Activation_Command = '/opt/ds_agent/dsa_control -a {} "tenantID:{}" "token:{}"'.format(Activation_URL, Tenant_ID, Token)  
+    Reset_Status = os.popen("/opt/ds_agent/dsa_control -r").read()
+    if ("OK" in Reset_Status):
+        print ("Reset Successful")
+        print ("Activating Agent...")
+        Activation_Status = os.popen(Activation_Command).read()
+        print (Activation_Status)
+        if ("Command session completed" in Activation_Status):
+            print ("Activation Completed")
+            return True
+        else:
+            print ("Activation Failed")
+            return False 
+    else:
+        print("Agent Reset Failed")
+        return False
+
+
 def DSM_Agent_Status():
     API_Path = '/api/computers/'
     DSM_URI = ''.join(['https://',Manager, ':', Port])
@@ -166,7 +187,11 @@ def Main():
                         print ("Faileed to extract the Agent Configuration")
                         sys.exit()
                 else:
-                    sys.exit()
+                    if (Activate_Agent()):
+                        time.sleep(60)
+                        Main()
+                    else:
+                        sys.exit()
             else:
                 Restart_Agent()
                 time.sleep(60)
