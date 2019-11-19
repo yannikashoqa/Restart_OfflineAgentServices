@@ -58,8 +58,58 @@ class XmlListConfig(list):
                 if text:
                     self.append(text)
 
+def Check_OS_Type():
+    OS_Type = ""
+    output = os.popen("uname -a").read()
+    if "el6" in output:
+        OS_Type = "el6"
+    elif "el7" in output:
+        OS_Type = "el7"
+    elif "el8" in output:
+        OS_Type = "el8"
+    elif "Ubuntu" in output:
+        OS_Type = "Ubuntu"
+    elif "amzn1" in output:
+        OS_Type = "amzn1"
+    elif "amzn2" in output:
+        OS_Type = "amzn2"   
+
+    print ("OS Type: {}".format(OS_Type))
+    return OS_Type
+    
+
+def Start_Agent():
+    print("Starting Deep Security Agent")
+    if OSType == "el6":
+        os.system("sudo /etc/init.d/ds_agent start") # RedHat/Centos 6
+    elif OSType == "el7":
+        os.system("sudo systemctl start ds_agent") # RedHat/Centos 7
+    elif OSType == "el8":
+        os.system("sudo systemctl start ds_agent") # RedHat/Centos 8    
+    elif OSType == "Ubuntu":
+        os.system("sudo /etc/init.d/ds_agent start") # Ubuntu
+    elif OSType == "amzn1":
+        os.system("sudo /etc/init.d/ds_agent start") # Amazon 1 Instance
+    elif OSType == "amzn2":
+        os.system("sudo /etc/init.d/ds_agent start") # Amazon 2 Instance
+
+def Restart_Agent():
+    print("Restarting Deep Security Agent")
+    if OSType == "el6":
+        os.system("sudo /etc/init.d/ds_agent restart") # RedHat/Centos 6
+    elif OSType == "el7":
+        os.system("sudo systemctl restart ds_agent") # RedHat/Centos 7
+    elif OSType == "el8":
+        os.system("sudo systemctl restart ds_agent") # RedHat/Centos 8 
+    elif OSType == "Ubuntu":
+        os.system("sudo /etc/init.d/ds_agent restart") # Ubuntu
+    elif OSType == "amzn1":
+        os.system("sudo /etc/init.d/ds_agent restart") # Amazon 1 Instance
+    elif OSType == "amzn2":
+        os.system("sudo /etc/init.d/ds_agent restart") # Amazon 2 Instance
+
 def Agent_Installed():
-    if (os.path.exists('/etc/init.d/ds_agent')):
+    if (os.path.exists('/opt/ds_agent/ds_agent')):
         print("Agent is installed")
         return True
     else:
@@ -74,12 +124,6 @@ def Agent_Process_Running():
     else:
         print("Agent is stopped.")
         return False
-
-def Start_Agent():
-    os.system("sudo /etc/init.d/ds_agent start")
-
-def Restart_Agent():
-    os.system("sudo /etc/init.d/ds_agent restart")
 
 def Agent_Port_Open():
     result = 1
@@ -97,15 +141,14 @@ def Agent_Port_Open():
     
 def Agent_GetConfiguration():
     output = os.popen("/opt/ds_agent/sendCommand --get GetConfiguration").read()
-    if "Socket reset" in output:
-        print ("Agent GetConfiguration Failed")
-        return False
-    else:
-        print ("Agent GetConfiguration OK")
+    if "hostID" in output:
+        print ("Check Agent_GetConfiguration OK")
         return True
+    else:
+        print ("Check Agent_GetConfiguration Failed")
+        return False
 
 def exctract_hostID():
-    #Add try catch statement
     print ("Extracting Agent Host ID")
     DSA_Configuration_raw = os.popen("/opt/ds_agent/sendCommand --get GetConfiguration").read() # Only works if Agent is running
     DSA_Configuration = DSA_Configuration_raw.split("\n",2)[2]
@@ -115,7 +158,6 @@ def exctract_hostID():
     x = json.dumps(AgentConfiguration) # Need to dump the configuration as a text format
     y = json.loads(x)  # Convert the text to json data format
     HostID = (y['hostID'])
-    print (HostID)
     return HostID
 
 def Agent_Activated():
@@ -148,6 +190,7 @@ def Activate_Agent():
 
 
 def DSM_Agent_Status():
+    print("Checking the DSM for Agent Status ...")
     API_Path = '/api/computers/'
     DSM_URI = ''.join(['https://',Manager, ':', Port])
     Base_URI = ''.join([DSM_URI,API_Path])
@@ -165,9 +208,12 @@ def DSM_Agent_Status():
 
 def Main():
     global RetryCount
+    global OSType
+    OSType = Check_OS_Type()
     if RetryCount > 2:
         sys.exit()
     RetryCount += 1
+
     if (Agent_Installed()):
         if (Agent_Process_Running()):
             if (Agent_Port_Open()):
@@ -175,17 +221,23 @@ def Main():
                     if(Agent_GetConfiguration()):
                         global HostID
                         HostID = exctract_hostID()
+                        print("Host ID is: {}".format(HostID))
                         agentStatusMessages = DSM_Agent_Status()
                         if "Offline" in  agentStatusMessages:
-                            print ("DSM Agent status is ", agentStatusMessages)
+                            print("DSM Agent status is {}".format(agentStatusMessages))
                             Restart_Agent()
                             time.sleep(60)
                             Main()
                         else:
-                            print ("DSM Agent status is ", agentStatusMessages)
+                            print("DSM Agent status is {}".format(agentStatusMessages))
                     else:
-                        print ("Faileed to extract the Agent Configuration")
-                        sys.exit()
+                        print("Failed to extract the Agent Configuration, reactivating the Agent")
+                        if (Activate_Agent()):
+                            time.sleep(60)
+                            Main()
+                        else:
+                            print("Failed to Activate Agent after failing to extract Agent Configuration. Exiting.")
+                            sys.exit()
                 else:
                     if (Activate_Agent()):
                         time.sleep(60)

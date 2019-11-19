@@ -5,15 +5,23 @@ FEATURES
 The ability to identify if the Deep security Agent is :
 - Installed
 - Running
+- Failing to extract local configuration
 - Listening on port 4118
 - Activated
+- Status as shown on the Deep Security Manager
 
 Restart the Agent if:
 - Stopped
 - Not listening to port 4118
 - reported as offline by the Deep Security Manager
 
-Activate the Agent if it is not activated 
+Activate the Agent if it is not activated or failing to extract the local configuration
+
+Tested Platforms:
+- Redhat 6, 7
+- Centos 6, 7
+- Ubuntu
+- Amazon Linux 1, 2
 
 REQUIREMENTS:
 - Root privileges
