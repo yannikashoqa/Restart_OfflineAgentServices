@@ -206,6 +206,30 @@ def DSM_Agent_Status():
     agentStatusMessages = data['computerStatus']['agentStatusMessages']
     return (agentStatusMessages)
 
+def Get_Agent_Security_Update_Status():
+    print("Checking the DSM for Agent's Security Update Status ...")
+    API_Path = '/api/computers/'
+    DSM_URI = ''.join(['https://',Manager, ':', Port])
+    Base_URI = ''.join([DSM_URI,API_Path])
+    Computer_URI = ''.join([Base_URI, HostID])
+
+    header = {'api-secret-key' : api_secret_key,
+              'api-version' : 'v1',
+              'Content-Type' : 'application/json' }
+
+    request = urllib2.Request(Computer_URI, headers=header)
+    response =  urllib2.urlopen(request).read().decode()
+    data = json.loads(response)
+    results = data['securityUpdates']['antiMalware']
+    for item in results:
+        x = json.dumps(item) # Need to dump the results as a text format
+        y = json.loads(x)  # Convert the text to json data format
+        if y['name'] == 'Smart Scan Agent Pattern':
+          isLatest = y['latest']
+    return (isLatest)
+
+
+
 def Main():
     global RetryCount
     global OSType
@@ -222,14 +246,30 @@ def Main():
                         global HostID
                         HostID = exctract_hostID()
                         print("Host ID is: {}".format(HostID))
+
                         agentStatusMessages = DSM_Agent_Status()
-                        if "Offline" in  agentStatusMessages:
+                        for i in agentStatusMessages:
+                            if "Offline" in i:
+                                AgentIsOffline = True
+                            else:
+                                AgentIsOffline = False
+
+                        if AgentIsOffline:
                             print("DSM Agent status is {}".format(agentStatusMessages))
                             Restart_Agent()
                             time.sleep(60)
                             Main()
                         else:
                             print("DSM Agent status is {}".format(agentStatusMessages))
+                            Agent_Pattern_isLatest = Get_Agent_Security_Update_Status()
+                            if Agent_Pattern_isLatest:
+                                print('Agent running latest Pattern File: {}'.format(Agent_Pattern_isLatest))                                
+                            else:
+                                print('Agent running latest Pattern File: {}'.format(Agent_Pattern_isLatest))
+                                print("Performing an Agent Pattern Update")
+                                os.popen("/opt/ds_agent/dsa_control -m UpdateComponent:true").read()
+                                time.sleep(60)
+                                Main()
                     else:
                         print("Failed to extract the Agent Configuration, reactivating the Agent")
                         if (Activate_Agent()):
